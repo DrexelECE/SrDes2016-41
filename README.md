@@ -29,3 +29,6 @@ The design involves
 
 `/imProc` Image Processing code
 
+
+http://www.electricrcaircraftguy.com/2013/09/propeller-static-dynamic-thrust-equation.html
+
