@@ -24,5 +24,8 @@ The design involves
 ## Summary of Directories
 
 `/exprArd` Experimental Arduino code used for initial flight testing. 
+
 `/fliCon` Flight control code
+
 `/imProc` Image Processing code
+
