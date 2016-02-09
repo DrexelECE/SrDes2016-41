@@ -31,4 +31,5 @@ The design involves
 
 
 http://www.electricrcaircraftguy.com/2013/09/propeller-static-dynamic-thrust-equation.html
+http://personal.osi.hu/fuzesisz/strc_eng/
 
