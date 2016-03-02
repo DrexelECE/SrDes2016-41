@@ -3,7 +3,7 @@
   <PropertyGroup>
     <UserProject />
   </PropertyGroup>
-  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
+  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|ARM' ">
     <RemoteDebugMachine>fetchdrone</RemoteDebugMachine>
     <RemoteDebugPort>5678</RemoteDebugPort>
   </PropertyGroup>

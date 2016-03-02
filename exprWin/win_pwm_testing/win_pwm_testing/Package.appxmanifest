@@ -8,11 +8,11 @@
   IgnorableNamespaces="uwp mp iot">
 
   <Identity
-	  Name="win_pwm_testing"
+	  Name="winPwmTesting"
 	  Publisher="CN=user"
 	  Version="1.0.0.0" />
 
-  <mp:PhoneIdentity PhoneProductId="6a4c26d3-8c76-415f-bf2c-b09d90c4dc01" PhonePublisherId="00000000-0000-0000-0000-000000000000"/>
+  <mp:PhoneIdentity PhoneProductId="5b04230b-7b59-4027-9722-ff2fd17977c8" PhonePublisherId="00000000-0000-0000-0000-000000000000"/>
 
   <Properties>
     <DisplayName>win_pwm_testing</DisplayName>
