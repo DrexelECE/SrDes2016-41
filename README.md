@@ -13,13 +13,13 @@ The design involves four major components, assigned to the designated person:
 
 ## Summary of Directories
 
-[`/exprArd`](tree/master/exprArd) Experimental Arduino code used for initial flight testing. 
+[`/exprArd`](/DrexelECE/SrDes2016-41/tree/master/exprArd) Experimental Arduino code used for initial flight testing. 
 
-[`/exprWin`](tree/master/exprArd) Experimental Windows code used for initial flight testing. 
+[`/exprWin`](/DrexelECE/SrDes2016-41/tree/master/exprArd) Experimental Windows code used for initial flight testing. 
 
-[`/fliCon`](tree/master/fliCon) Flight control code
+[`/fliCon`](/DrexelECE/SrDes2016-41/tree/master/fliCon) Flight control code
 
-[`/imProc`](tree/master/imProc) Image Processing code
+[`/imProc`](/DrexelECE/SrDes2016-41/tree/master/imProc) Image Processing code
 
 
 ## Useful Links
