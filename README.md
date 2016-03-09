@@ -22,12 +22,17 @@ The design involves four major components, assigned to the designated person:
 [`/imProc`](//github.com/DrexelECE/SrDes2016-41/tree/master/imProc) Image Processing code
 
 
-## Useful Links
+## Administrative things
 
 [Project Documentation](//github.com/DrexelECE/SrDes2016-41/tree/master/docs), such as formal progress reports
+
 [Asana](https://app.asana.com/-/share?s=98070495671316-2e9DlKb5TYFGUOcoN8RBlEklEf55bHPchhZFMHUMUT2-63782954939305), The Task Tracker
+
 [OneDrive](https://onedrive.live.com/?id=AD3D34F7F25A79E6%21141660&cid=AD3D34F7F25A79E6): Collaboration for everything that isn't code. (Contents aren't public.  Sorry.)
 
+## Useful links
+
 [Propeller Thrust Equation](http://www.electricrcaircraftguy.com/2013/09/propeller-static-dynamic-thrust-equation.html)
+
 [Propeller Thrust Calculator](http://personal.osi.hu/fuzesisz/strc_eng/)
 
