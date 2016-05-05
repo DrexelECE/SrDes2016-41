@@ -5,6 +5,7 @@ using System.IO;
 using System.Linq;
 using System.Runtime.InteropServices.WindowsRuntime;
 using System.Threading;
+using System.ServiceModel;
 using System.Threading.Tasks;
 using Windows.Devices.Enumeration;
 using Windows.Devices.I2c;
@@ -35,48 +36,46 @@ namespace Adafruit.Pwm.Example
             Application.Current.Exit();
         }
 
+        [WebMethod]
+        public void set()
+
         private void RotateExample()
         {
             try
             {
-                //The servoMin/servoMax values are dependant on the hardware you are using.
-                //The values below are for my SR-4303R continuous rotating servos.
-                //If you are working with a non-continous rotatng server, it will have an explicit
-                //minimum and maximum range; crossing that range can cause the servo to attempt to
-                //spin beyond its capability, possibly damaging the gears.
 
-                const int servoMin = 300;  // Min pulse length out of 4095
-                const int servoMax = 480;  // Max pulse length out of 4095
-
-                using (var hat = new Adafruit.Pwm.PwmController())
+                using (var hat = new PwmController())
                 {
-                    hat.SetDesiredFrequency(500); // spec'd to 658?
-
-
+                    hat.SetDesiredFrequency(364); // spec'd to 658?
 
                     while (true)
                     {
-                        //hat.SetPulseParameters(4, 4015); //aux
-                        //hat.SetPulseParameters(3, 4015); //rud
-                        //hat.SetPulseParameters(0, 160); //thr
 
-                        //Task.Delay(TimeSpan.FromSeconds(5)).Wait();
+                        int s = 0;
+                        int m = 8;
 
-                        //// 10 -> 160
-                        //// 128 -> 2055
-                        //// 250 -> 4015
+                        int max = (int) ((float) 4096*(0.75));
+                        int min = (int) ((float) 4096*(0.28));
 
-                        //hat.SetPulseParameters(4, 160); //aux
-                        //hat.SetPulseParameters(3, 2055); //rud
-                        //hat.SetPulseParameters(2, 2055); //ele
-                        //hat.SetPulseParameters(1, 2055); //ail
-                        //hat.SetPulseParameters(0, 4015); //thr
+                        while (true)
+                        {
+                            s += m;
+                            if (s >= max)
+                            {
+                                s = max;
+                                m = -4;
+                            }
+                            if (s <= min)
+                            {
+                                s = min;
+                                m = 4;
+                            }
+                            hat.SetPulseParameters(15, s);
 
-                        //Task.Delay(TimeSpan.FromSeconds(5)).Wait();
+                            Task.Delay(TimeSpan.FromMilliseconds(10)).Wait();
+                        }
 
-                        //hat.SetPulseParameters(0, 160); //thr
-
-                        //Task.Delay(TimeSpan.FromSeconds(10)).Wait();
+                        hat.SetPulseParameters(15, 0);
 
                         hat.SetPulseParameters(4, 40); //aux
                         hat.SetPulseParameters(3, 40); //rud
@@ -85,6 +84,8 @@ namespace Adafruit.Pwm.Example
                         hat.SetPulseParameters(0, 40); //thr
 
                         Task.Delay(TimeSpan.FromSeconds(5)).Wait();
+
+                        hat.SetPulseParameters(15, 4096);
 
                         hat.SetPulseParameters(4, 4055); //aux
                         hat.SetPulseParameters(3, 4055); //rud
