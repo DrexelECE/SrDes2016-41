@@ -1,0 +1,6 @@
+[submodule "OnBoard/Adafruit.Pwm"]
+	path = OnBoard/Adafruit.Pwm
+	url = https://github.com/golaat/Adafruit.Pwm.git
+[submodule "exprWin/samples"]
+	path = exprWin/samples
+	url = https://github.com/ms-iot/samples.git
