@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Diagnostics;
 using System.Threading.Tasks;
+using Windows.ApplicationModel;
 using Windows.Media.Effects;
 using Windows.Storage;
 using Windows.UI.Core;
@@ -21,6 +22,8 @@ namespace Fetch.FlyingUI
 
         public MainPage()
         {
+            Debug.WriteLine("Package Family Name:\n  " + Package.Current.Id.FamilyName + "\n");
+
             this.InitializeComponent();
 
             // init the hat

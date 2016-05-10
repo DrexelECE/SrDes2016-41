@@ -2,6 +2,7 @@
 
 
 using System;
+using System.Diagnostics;
 using System.Text;
 using Windows.Foundation.Collections;
 using Windows.ApplicationModel.Background;
@@ -59,7 +60,7 @@ namespace HttpServer
 
                 // Initialize the AppServiceConnection
                 appServiceConnection = new AppServiceConnection();
-                appServiceConnection.PackageFamilyName = "BlinkyWebService_1w720vyc4ccym"; // TODO replace with meaningful value.
+                appServiceConnection.PackageFamilyName = "fetchDrone_yzekw4x8qxe1g";
                 appServiceConnection.AppServiceName = "FetchComm";
 
                 // Send a initialize request 
@@ -131,6 +132,8 @@ namespace HttpServer
             {
                 var updateMessage = new ValueSet();
                 updateMessage.Add("Command", state);
+
+                Debug.WriteLine(updateMessage.Values.ToString());
 #pragma warning disable CS4014
                 appServiceConnection.SendMessageAsync(updateMessage);
 #pragma warning restore CS4014
