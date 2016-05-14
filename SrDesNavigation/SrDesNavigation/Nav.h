@@ -6,6 +6,8 @@
 #include "utils.h"
 #pragma once
 
+
+
 class Nav {
 public:
 	static void frameSegmenter(std::vector<cv::Mat> & inputImage, cv::Mat & outImage)
@@ -35,39 +37,53 @@ public:
 		}
 		return;
 	}
-static void patternRec(cv::Mat & inputBW, std::vector<cv::Mat> & inputImage, std::vector<bool*> pattern, cv::Point & centroid)
-{
-	cv::Mat labels, labels_mask, stats, stats_mask, centroids,
-			centroids_mask, bw_dilate, bw_obj, bw_masked;
-	double height, width, ra; int expected = (int)pattern.size(), centroidInd, j;
-	bw_dilate = inputBW.clone(); 
 
-	cv::connectedComponentsWithStats(bw_dilate, labels, stats, centroids, 8);
-	for ( int i = 0; i <= 20 && stats_mask.rows != (expected + 1); i++)
+	static void patternRec(cv::Mat & inputBW, std::vector<cv::Mat> & inputImage, std::vector<bool*> pattern, cv::Point & centroid)
 	{
-		cv::dilate(bw_dilate, bw_dilate, cv::Mat(), cv::Point(1, 1), 1, 1, 1);
+		cv::Mat labels, labels_mask, stats, stats_mask, centroids,
+				centroids_mask, bw_dilate, bw_obj, bw_masked;
+		double height, width, ra; int expected = (int)pattern.size(), centroidInd, j;
+		bw_dilate = inputBW.clone(); 
+
 		cv::connectedComponentsWithStats(bw_dilate, labels, stats, centroids, 8);
-		int count = stats.rows;
-		for ( j = 0; j < count; j++) 
+		for ( int i = 0; i <= 20 && stats_mask.rows != (expected + 1); i++)
 		{
-			width = stats.at<int>(j, cv::CC_STAT_WIDTH);
-			height = stats.at<int>(j, cv::CC_STAT_HEIGHT);
-			ra = (width < height) ? width / height : height / width;
-			if (ra < .4)
+			cv::dilate(bw_dilate, bw_dilate, cv::Mat(), cv::Point(1, 1), 1, 1, 1);
+			cv::connectedComponentsWithStats(bw_dilate, labels, stats, centroids, 8);
+			int count = stats.rows;
+			for ( j = 0; j < count; j++) 
 			{
-				bw_obj = labels == j;
-				cv::bitwise_and(bw_obj, inputBW, bw_masked);
-				cv::connectedComponentsWithStats(bw_masked, labels_mask, stats_mask, centroids_mask, 8);
-				if (stats_mask.rows == (expected + 1))	break;
-			} 
+				width = stats.at<int>(j, cv::CC_STAT_WIDTH);
+				height = stats.at<int>(j, cv::CC_STAT_HEIGHT);
+				ra = (width < height) ? width / height : height / width;
+				if (ra < .4)
+				{
+					bw_obj = labels == j;
+					cv::bitwise_and(bw_obj, inputBW, bw_masked);
+					cv::connectedComponentsWithStats(bw_masked, labels_mask, stats_mask, centroids_mask, 8);
+					if (stats_mask.rows == (expected + 1))	break;
+				} 
+			}
+		}
+		centroidInd = j;
+		double x, y;
+		x = stats.at<int>(centroidInd, cv::CC_STAT_LEFT)+(width/2);
+		y = stats.at<int>(centroidInd, cv::CC_STAT_TOP) + (height / 2);
+		centroid = cv::Point((int)x, (int)y);
+	}
+
+	static void pwmTransform(cv::Point centroid, bool isLowerCamera, std::string out)
+	{
+		bool isUpperCamer = !isLowerCamera;
+		if (isUpperCamer)
+		{
+
+		}
+		else //isLowerCamer
+		{
+
 		}
 	}
-	centroidInd = j;
-	double x, y;
-	x = stats.at<int>(centroidInd, cv::CC_STAT_LEFT)+(width/2);
-	y = stats.at<int>(centroidInd, cv::CC_STAT_TOP) + (height / 2);
-	centroid = cv::Point((int)x, (int)y);
-}
 };
 
 /*
