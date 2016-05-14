@@ -35,11 +35,11 @@ public:
 		}
 		return;
 	}
-static void patternRec(cv::Mat & inputBW, std::vector<cv::Mat> & inputImage, std::vector<bool[3]> pattern, cv::Point & centroid)
+static void patternRec(cv::Mat & inputBW, std::vector<cv::Mat> & inputImage, std::vector<bool*> pattern, cv::Point & centroid)
 {
 	cv::Mat labels, labels_mask, stats, stats_mask, centroids,
 			centroids_mask, bw_dilate, bw_obj, bw_masked;
-	double height, width, ra; int expected = pattern.size(), centroidInd, j;
+	double height, width, ra; int expected = (int)pattern.size(), centroidInd, j;
 	bw_dilate = inputBW.clone(); 
 
 	cv::connectedComponentsWithStats(bw_dilate, labels, stats, centroids, 8);
@@ -58,23 +58,26 @@ static void patternRec(cv::Mat & inputBW, std::vector<cv::Mat> & inputImage, std
 				bw_obj = labels == j;
 				cv::bitwise_and(bw_obj, inputBW, bw_masked);
 				cv::connectedComponentsWithStats(bw_masked, labels_mask, stats_mask, centroids_mask, 8);
-				if (stats_mask.rows == (expected + 1))
-				{
-					for (int k = 0; k < expected; k++)
-					{
-						cv::Mat obj_mask, maskedImage;
-						//check color
-						maskedImage.copyTo(inputImage.data(), )
-					}
-					break;
-				}
+				if (stats_mask.rows == (expected + 1))	break;
 			} 
 		}
 	}
 	centroidInd = j;
-	int x, y;
+	double x, y;
 	x = stats.at<int>(centroidInd, cv::CC_STAT_LEFT)+(width/2);
 	y = stats.at<int>(centroidInd, cv::CC_STAT_TOP) + (height / 2);
-	centroid = cv::Point(x, y);
+	centroid = cv::Point((int)x, (int)y);
 }
 };
+
+/*
+for (int k = 1; k <= expected; k++)
+{
+cv::Mat obj_mask, maskedImage;
+//check color
+cv::compare(labels_mask, k, maskedImage, cv::CMP_EQ);
+//						maskedImage = maskedImage * inputImage[0];
+cv::namedWindow("Display window", cv::WINDOW_AUTOSIZE);// Create a window for display.
+cv::imshow("Display window", maskedImage);
+cv::waitKey();
+}*/
