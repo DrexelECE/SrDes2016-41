@@ -16,8 +16,8 @@ public:
 		IplImage* finalIm = cvCreateImage(cvSize(im->width, im->height), IPL_DEPTH_8U, 1);
 		if (inTh == -1)
 		{
-			double otsuThreshold = cvThreshold(im, finalIm, 0, 255, cv::THRESH_BINARY | cv::THRESH_OTSU);
-			double th = (otsuThreshold*1.5 <= 250.0) ? otsuThreshold*1.5 : 249;
+			double otsuThreshold = cvThreshold(im, finalIm, 0, 255, cv::THRESH_BINARY_INV | cv::THRESH_OTSU);
+			double th = (otsuThreshold*2 <= 250.0) ? otsuThreshold*1.5 : 249;
 			cvThreshold(im, finalIm, th, 255, cv::THRESH_BINARY);
 		}else
 			cvThreshold(im, finalIm, inTh, 255, cv::THRESH_BINARY);
@@ -43,44 +43,54 @@ class con_http
 
 	tcp::endpoint endpoint;
 public:
-	con_http(std::string host, int port) :
+	con_http(char* host, int port) :
 		socket(io_service), host(host), port(port),
 		endpoint(boost::asio::ip::address::from_string(host, error), port) {}
 
 	void http_get(std::string path, std::vector<char> & buffer) {
-		boost::asio::streambuf request;
-		std::ostream request_stream(&request);
+		try {
+			boost::asio::streambuf request;
+			std::ostream request_stream(&request);
 
-		request_stream << "GET " << path << " HTTP/1.1\r\n";
-		request_stream << "Host: " << host << ":" << port << "\r\n";
-		request_stream << "Connection: close\r\n\r\n";
-		boost::asio::write(socket, request);
+			request_stream << "GET " << path << " HTTP/1.1\r\n";
+			request_stream << "Host: " << host << ":" << port << "\r\n";
+			request_stream << "Connection: close\r\n\r\n";
+			boost::asio::write(socket, request);
 
-		while (boost::asio::read(socket, boost::asio::buffer(buffer),
-			boost::asio::transfer_at_least(1), error));
-		//if (error && error != boost::asio::error::eof)
-			//throw boost::system::system_error(error);
-		std::vector<char>::iterator it;
-		std::vector<char> ret; ret.push_back('\r'); ret.push_back('\n'); ret.push_back('\0'); ret.push_back('\0');
-		it = std::search(buffer.begin(), buffer.end(), ret.begin(), ret.end());
-		int size = std::distance(buffer.begin(), it);
-		buffer.resize(size);
-		if(false)
-		for (auto i = buffer.begin(); i != buffer.end(); ++i)
-			std::cout << *i;
-		std::cout << std::endl;
-		std::ofstream file("picture.jpg", std::ofstream::binary);
-//		file.write(buffer.data(), buffer.size());
+			while (boost::asio::read(socket, boost::asio::buffer(buffer),
+				boost::asio::transfer_at_least(70000), error))
+				if (error && error != boost::asio::error::eof)
+					throw boost::system::system_error(error);
+			boost::asio::streambuf response;
+
+//			boost::asio::read_until(socket, response, "\r\n\r\n");
+			std::vector<char>::iterator it;
+			std::vector<char> ret; ret.push_back('\r'); ret.push_back('\n'); //ret.push_back('\r'); ret.push_back('\n'); //ret.push_back('\0'); 
+			it = std::find_end(buffer.begin(), buffer.end(), ret.begin(), ret.end());
+			int size = std::distance(buffer.begin(), it);
+			buffer.resize(size);
+		}
+		catch (std::exception& e) {
+			std::cout << "Exception: " << e.what() << "\n";
+		}	
 	}
 	void getImage(std::vector<char> & buffer) {
 		socket.connect(endpoint, error);
-		buffer.resize(500000); 
+		buffer.resize(70000); 
 		http_get("/srDes/HttpTest/image/\n", buffer);
+//		http_get("/image/\n", buffer);
+		//std::cout << buffer.size() << std::endl;
+
 	}
-	void updatePWM(std::vector<char> & buffer) {
+	void updatePWM(std::vector<char> & buffer, std::string update) {
 		socket.connect(endpoint, error);
-		buffer.resize(128); 
-		http_get("/srDes/HttpTest/fly/\n", buffer);
+		buffer.resize(256);
+		std::string uString = "/srDes/HttpTest/fly/?" + update + "\n";
+	//	std::string uString = "/fly/?" + update + "\n";
+		http_get(uString, buffer);
+		for (std::vector<char>::const_iterator  it = buffer.begin(); it != buffer.end(); it++)
+			std::cout << *it;
+		std::cout << std::endl;
 	}
 	
 };

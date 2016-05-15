@@ -2,6 +2,7 @@
 #include <opencv2/imgproc/imgproc.hpp>
 #include <opencv2/highgui/highgui.hpp>
 #include <vector>
+#include <ctime>
 #include <iostream>
 #include "utils.h"
 #pragma once
@@ -9,18 +10,23 @@
 
 
 class Nav {
+	//const int maxThrottle = (int)()
 public:
 	static void frameSegmenter(std::vector<cv::Mat> & inputImage, cv::Mat & outImage)
 	{
-		cv::Mat mask, stats, centroids, bw;
+		cv::Mat mask, stats, centroids, bw, normalized;
 		outImage = inputImage[0] == -1;
-		for (int i = 0; i < inputImage.size(); i++)
+		//for (int i = 0; i < inputImage.size(); i++)
 		{
+			int i = 0;
 			im_utils::threshold(inputImage[i], bw);
+	
 			cv::erode(bw, bw, cv::Mat(), cv::Point(1, 1), 2, 1, 1);
+			
 			cv::dilate(bw, bw, cv::Mat(), cv::Point(1, 1), 1, 1, 1);
 			cv::connectedComponentsWithStats(bw, bw, stats, centroids, 4);
 			bw.convertTo(bw, CV_8U);
+	
 			int num = stats.rows;
 			for (int j = 1; j < num; j++)
 			{
@@ -30,11 +36,15 @@ public:
 				width = stats.at<int>(j, cv::CC_STAT_WIDTH);
 				height = stats.at<int>(j, cv::CC_STAT_HEIGHT);
 				ra = (width < height) ? width / height : height / width;
-				if (area > 1000 || area < 40 || ra < 0.88)
+				if (area > 500 || area < 10 || ra < 0.7)
 					im_utils::removeMask(bw, j);
+				
 			}
 			cv::bitwise_or((bw >= 1), outImage, outImage);
+			
 		}
+
+		
 		return;
 	}
 
@@ -46,33 +56,35 @@ public:
 		bw_dilate = inputBW.clone(); 
 
 		cv::connectedComponentsWithStats(bw_dilate, labels, stats, centroids, 8);
-		for ( int i = 0; i <= 20 && stats_mask.rows != (expected + 1); i++)
+		for ( int i = 0; i <= 20 && stats_mask.rows != (expected ); i++)
 		{
 			cv::dilate(bw_dilate, bw_dilate, cv::Mat(), cv::Point(1, 1), 1, 1, 1);
 			cv::connectedComponentsWithStats(bw_dilate, labels, stats, centroids, 8);
 			int count = stats.rows;
-			for ( j = 0; j < count; j++) 
+			for ( j = 1; j < count; j++) 
 			{
 				width = stats.at<int>(j, cv::CC_STAT_WIDTH);
 				height = stats.at<int>(j, cv::CC_STAT_HEIGHT);
-				ra = (width < height) ? width / height : height / width;
-				if (ra < .4)
+				//ra = (width < height) ? width / height : height / width;
+				ra = height / width;
+				if (ra < .5)
 				{
 					bw_obj = labels == j;
 					cv::bitwise_and(bw_obj, inputBW, bw_masked);
 					cv::connectedComponentsWithStats(bw_masked, labels_mask, stats_mask, centroids_mask, 8);
-					if (stats_mask.rows == (expected + 1))	break;
+					if (stats_mask.rows == (expected ))	break;
 				} 
+				
 			}
 		}
 		centroidInd = j;
 		double x, y;
-		x = stats.at<int>(centroidInd, cv::CC_STAT_LEFT)+(width/2);
+		x = stats.at<int>(centroidInd, cv::CC_STAT_LEFT) +(width / 2);
 		y = stats.at<int>(centroidInd, cv::CC_STAT_TOP) + (height / 2);
 		centroid = cv::Point((int)x, (int)y);
 	}
 
-	static void pwmTransform(cv::Point centroid, bool isLowerCamera, std::string out)
+	static void pwmTransform(con_http & con, cv::Point centroid, bool isLowerCamera, std::string & out)
 	{
 		bool isUpperCamer = !isLowerCamera;
 		if (isUpperCamer)
@@ -83,6 +95,34 @@ public:
 		{
 
 		}
+	}
+	static void takeoff(con_http &con)
+	{
+		int maxThrottle = 3270;
+		int takeoffThrottle = .4*maxThrottle;
+		double takeoffTime = 5.0;
+		std::string aux = std::to_string(maxThrottle);
+		std::string pwmString = std::to_string(takeoffThrottle) + ",2048,2048,2048,2048," + aux;
+		std::vector<char>buffer;
+		con.updatePWM(buffer, pwmString);
+		clock_t begin = clock();
+		while (double(clock() - begin) < takeoffTime);
+		con.updatePWM(buffer, "0,0,0,0,0,0");
+
+	}
+	static void init(con_http &con)
+	{
+		int maxThrottle = 3270;
+		int minThrottle = (int)(4096.0 * 0.2);
+		double runTime = 0.5;
+		clock_t begin = clock();
+		std::string aux = "1000";
+		std::string pwmString = std::to_string(minThrottle) + ",0,0,4096,4096";
+		std::vector<char>buffer;
+		con.updatePWM(buffer, pwmString);
+		while (double(clock() - begin) < runTime);
+		con.updatePWM(buffer, "0,0,0,0,0,0,0");
+
 	}
 };
 
