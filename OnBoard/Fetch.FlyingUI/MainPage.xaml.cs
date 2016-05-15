@@ -38,6 +38,10 @@ namespace Fetch.FlyingUI
 
         public Stream CameraStream;
 
+        public StorageFile photoFile;
+        public readonly string PHOTO_FILE_NAME = "photo.jpg";
+
+
         public void SpawnServer()
         {
             _httpServer = new HttpServer(8000, this);
@@ -236,27 +240,37 @@ namespace Fetch.FlyingUI
             }
         }
 
-        public  Stream CameraTake() {
-            try
-            {
-                ImageEncodingProperties imageProperties = ImageEncodingProperties.CreateJpeg();
-                InMemoryRandomAccessStream stream = new InMemoryRandomAccessStream();
-
-                ((Task) _mediaCapture.CapturePhotoToStreamAsync(imageProperties, stream)).Wait();
-
-                Debug.WriteLine("Take Photo succeeded.");
-
-                CameraStream = stream.AsStreamForRead();
-                return CameraStream;
-
-            }
-            catch (Exception ex)
-            {
-                Debug.Write("Exception: " + ex.Message);
-                CameraCleanup();
-                return null;
-            }
+        public async void CameraTake()
+        {
+            photoFile = await KnownFolders.PicturesLibrary.CreateFileAsync(
+                    PHOTO_FILE_NAME, CreationCollisionOption.GenerateUniqueName);
+            ImageEncodingProperties imageProperties = ImageEncodingProperties.CreateJpeg();
+            ((Task)_mediaCapture.CapturePhotoToStorageFileAsync(imageProperties, photoFile)).Wait();
+           
+            Debug.WriteLine("Take Photo to file succeeded: " + photoFile.Path);
         }
+
+//        public  Stream CameraTake() {
+//            try
+//            {
+//                var imageProperties = ImageEncodingProperties.CreateJpeg();
+//                var stream = new InMemoryRandomAccessStream();
+//
+//                ((Task) _mediaCapture.CapturePhotoToStreamAsync(imageProperties, stream)).Wait();
+//
+//                Debug.WriteLine("Take Photo succeeded.");
+//
+//                CameraStream = stream.AsStreamForRead();
+//                return CameraStream;
+//
+//            }
+//            catch (Exception ex)
+//            {
+//                Debug.Write("Exception: " + ex.Message);
+//                CameraCleanup();
+//                return null;
+//            }
+//        }
 
 
 
@@ -266,10 +280,10 @@ namespace Fetch.FlyingUI
     public sealed class HttpServer : IDisposable
     {
         private const uint BufferSize = 8192;
-        private int port = 8000;
+        private readonly int port = 8000;
         private StreamSocketListener listener;
 
-        private MainPage _main;
+        private readonly MainPage _main;
 
         public HttpServer(int serverPort, MainPage main)
         {
@@ -444,26 +458,37 @@ namespace Fetch.FlyingUI
 
                                 _main.CameraTake();
 
-                                _main.CameraStream.Seek(0, SeekOrigin.Begin);
+//                                if (stream == null)
+//                                    throw new NullReferenceException("The stream with the image is null.");
+//
+//                                stream.Seek(0, SeekOrigin.Begin);
 
 
                                 using (Stream resp = outputStream.AsStreamForWrite())
                                 {
 
-    //                                var fileStream = File.Create("C:\\Path\\To\\File");
-    //                                myOtherObject.InputStream.Seek(0, SeekOrigin.Begin);
-    //                                myOtherObject.InputStream.CopyTo(fileStream);
-    //                                fileStream.Close();
+                                    //                                var fileStream = File.Create("C:\\Path\\To\\File");
+                                    //                                myOtherObject.InputStream.Seek(0, SeekOrigin.Begin);
+                                    //                                myOtherObject.InputStream.CopyTo(fileStream);
+                                    //                                fileStream.Close();
+
+                                    
 
                                     string header = String.Format("HTTP/1.1 200 OK\r\n" +
-                                                        "Content-Length: {0}\r\n" +
-                                                        "Connection: Keep-Alive\r\n",
-                                                        "Content-Type: image/png\r\n\r\n",
-                                                        _main.CameraStream.Length);
+                                                    "Content-Length: {0}\r\n" +
+                                                    "Connection: Keep-Alive\r\n",
+                                                    "Content-Type: image/png\r\n\r\n",
+                                                    _main.CameraStream.Length);
                                     byte[] headerArray = Encoding.UTF8.GetBytes(header);
                                     resp.Write(headerArray, 0, headerArray.Length);
                                     _main.CameraStream.CopyTo(resp);
-                                    resp.Flush();
+
+                                    using (
+                                        FileStream fsSource = new FileStream(_main.PHOTO_FILE_NAME, FileMode.Open,
+                                            FileAccess.Read))
+                                    {
+                                        fsSource.CopyTo(resp);
+                                    }
                                 }
                                 ((Task)outputStream.FlushAsync()).Wait();
                             }
