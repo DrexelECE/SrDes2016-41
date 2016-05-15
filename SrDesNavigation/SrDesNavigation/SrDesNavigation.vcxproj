@@ -130,9 +130,9 @@
     <ClCompile Include="main.cpp" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="main.h" />
-    <ClInclude Include="Nav.h" />
-    <ClInclude Include="utils.h" />
+    <ClInclude Include="con_http.h" />
+    <ClInclude Include="NavControls.h" />
+    <ClInclude Include="im_utils.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

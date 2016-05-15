@@ -20,13 +20,13 @@
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="utils.h">
+    <ClInclude Include="NavControls.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="Nav.h">
+    <ClInclude Include="con_http.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="main.h">
+    <ClInclude Include="im_utils.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>
