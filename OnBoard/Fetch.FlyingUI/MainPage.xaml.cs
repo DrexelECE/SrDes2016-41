@@ -6,6 +6,7 @@ using System.Runtime.InteropServices.WindowsRuntime;
 using System.Text;
 using System.Threading.Tasks;
 using Windows.ApplicationModel;
+using Windows.Graphics.Display;
 using Windows.Media.Capture;
 using Windows.Media.MediaProperties;
 using Windows.Networking.Sockets;
@@ -17,7 +18,7 @@ using Windows.UI.Xaml;
 using Windows.UI.Xaml.Controls;
 using Windows.UI.Xaml.Media.Imaging;
 using Windows.UI.Xaml.Documents;
-
+using Windows.UI.Xaml.Media;
 using Adafruit.Pwm;
 
 // The Blank Page item template is documented at http://go.microsoft.com/fwlink/?LinkId=402352&clcid=0x409
@@ -34,6 +35,8 @@ namespace Fetch.FlyingUI
         private HttpServer _httpServer;
 
         private MediaCapture _mediaCapture;
+
+        public Stream CameraStream;
 
         public void SpawnServer()
         {
@@ -62,17 +65,20 @@ namespace Fetch.FlyingUI
             Task.Factory.StartNew(() =>
             {
                 // start the status beacon
-                int inc = 128;
-                int lev = 3072;
+                int inc = 1;
+                int lev = 2048;
                 
                 while (true)
                 {
-                    if (lev < 2048 || lev > 4095)
+                    if (lev <= 1 || lev >= 4095)
                         inc = -inc;
+
+                    if (inc > 0)
+                        lev = lev << 1;
+                    else
+                        lev = lev >> 1;
                 
-                    lev += inc;
-                
-                    SetPWM(15, lev);
+                    SetPWM(15, 4096-lev);
                     Task.Delay(TimeSpan.FromMilliseconds(20)).Wait();
                 }
             });
@@ -81,10 +87,31 @@ namespace Fetch.FlyingUI
 
         }
 
+        private UInt16[] _pwmValues = new UInt16[16];
+
+
+        public string getPwmString()
+        {
+            string res = "";
+            for (int i = 0; i < _pwmValues.Length; i++)
+            {
+                res += getPwmSingleString(i);
+            }
+            return res;
+        }
+
+        private string getPwmSingleString(int which)
+        {
+            return _pwmValues[which].ToString("X3")
+                   + (which + 1 == _pwmValues.Length ? "" : ",");
+        }
+
         public void SetPWM(int which, int setTo)
         {
             setTo = (setTo > 4094 ? 4094 : setTo);
             setTo = (setTo < 1 ? 1 : setTo);
+
+            _pwmValues[which] = (ushort)setTo;
 
             if (which > 15 || which < 0)
                 throw new ArgumentOutOfRangeException(nameof(which), "Must be 0-15, inclusive.");
@@ -114,16 +141,50 @@ namespace Fetch.FlyingUI
                 _mediaCapture.Failed += new MediaCaptureFailedEventHandler(CameraInit_Failed);
                 await _mediaCapture.InitializeAsync(capInitSettings);
 
-                PreviewElement.Source = _mediaCapture;
-                await _mediaCapture.StartPreviewAsync();
-
-                Debug.WriteLine("done.");
 
                 IReadOnlyList<IMediaEncodingProperties> resolutions = _mediaCapture.VideoDeviceController.GetAvailableMediaStreamProperties(MediaStreamType.VideoPreview);
 
+                VideoEncodingProperties bestRes = null;
+
+                // search for minimal available frame rate and resolution. 
+                Debug.WriteLine("Available Resolutions: ");
+                for (var i = 0; i < resolutions.Count; i++)
+                {
+                    if (resolutions[i].GetType().Name != "VideoEncodingProperties")
+                        continue;
+                    var r = (VideoEncodingProperties) resolutions[i];
+
+                    Debug.WriteLine(i.ToString() + " res: " + r.Width + "x" + r.Height + " @ " + r.FrameRate.Numerator + "/" + r.FrameRate.Denominator + " fps (" + r.Type + ": " + r.Subtype + ")");
+
+                    if (r.FrameRate.Denominator != 1)
+                        continue;
+
+                    if (bestRes == null)
+                    {
+                        bestRes = r;
+                        continue;
+                    }
+
+                    if (r.FrameRate.Numerator <= bestRes.FrameRate.Numerator && 
+                        r.Height * r.Width <= bestRes.Height * bestRes.Width &&
+                        r.Height >= 400 &&
+                        r.Subtype == "YUY2")
+                    {
+                        bestRes = r;
+                    }
+
+                }
+
+                await _mediaCapture.VideoDeviceController.SetMediaStreamPropertiesAsync(MediaStreamType.Photo, bestRes);
+
+                Debug.WriteLine("Using: " + bestRes.Width + "x" + bestRes.Height + " @ " + bestRes.FrameRate.Numerator + "/" + bestRes.FrameRate.Denominator + " fps");
 
 
+                PreviewElement.Source = _mediaCapture;
+                PreviewElement.Stretch = Stretch.None;
+                await _mediaCapture.StartPreviewAsync();
 
+                Debug.WriteLine("done.");
             }
             catch (Exception ex)
             {
@@ -175,17 +236,18 @@ namespace Fetch.FlyingUI
             }
         }
 
-        public async Task<Stream> CameraTake() {
+        public  Stream CameraTake() {
             try
             {
                 ImageEncodingProperties imageProperties = ImageEncodingProperties.CreateJpeg();
                 InMemoryRandomAccessStream stream = new InMemoryRandomAccessStream();
 
-                await _mediaCapture.CapturePhotoToStreamAsync(imageProperties, stream);
+                ((Task) _mediaCapture.CapturePhotoToStreamAsync(imageProperties, stream)).Wait();
 
-                Debug.Write("Take Photo succeeded.");
+                Debug.WriteLine("Take Photo succeeded.");
 
-                return stream.AsStreamForRead();
+                CameraStream = stream.AsStreamForRead();
+                return CameraStream;
 
             }
             catch (Exception ex)
@@ -203,8 +265,6 @@ namespace Fetch.FlyingUI
 
     public sealed class HttpServer : IDisposable
     {
-        private const string offHtmlString = "<html><head><title>Blinky App</title></head><body><form action=\"blinky.html\" method=\"GET\"><input type=\"radio\" name=\"state\" value=\"on\" onclick=\"this.form.submit()\"> On<br><input type=\"radio\" name=\"state\" value=\"off\" checked onclick=\"this.form.submit()\"> Off</form></body></html>";
-        private const string onHtmlString = "<html><head><title>Blinky App</title></head><body><form action=\"blinky.html\" method=\"GET\"><input type=\"radio\" name=\"state\" value=\"on\" checked onclick=\"this.form.submit()\"> On<br><input type=\"radio\" name=\"state\" value=\"off\" onclick=\"this.form.submit()\"> Off</form></body></html>";
         private const uint BufferSize = 8192;
         private int port = 8000;
         private StreamSocketListener listener;
@@ -220,7 +280,18 @@ namespace Fetch.FlyingUI
             _main = main;
 
             port = serverPort;
-            listener.ConnectionReceived += async (s, e) => { await ProcessRequestAsync(e.Socket); };
+            listener.ConnectionReceived += async (s, e) =>
+            {
+                await ProcessRequestAsync(e.Socket);
+                try
+                {
+                    e.Socket.Dispose();
+                }
+                catch (Exception ex)
+                {
+                    Debug.WriteLine(ex.Message);
+                }
+            };
         }
 
         public void StartServer()
@@ -263,112 +334,173 @@ namespace Fetch.FlyingUI
                 if (requestParts.Length > 1)
                 {
                     if (requestParts[0] == "GET")
-                        WriteResponse(requestParts[1], socket);
+                    {
+                        try
+                        {
+                            WriteResponse(requestParts[1], socket);
+                        }
+                        catch (Exception ex)
+                        {
+
+
+                            using (var outputStream = socket.OutputStream)
+                            {
+                                using (Stream resp = outputStream.AsStreamForWrite())
+                                {
+                                    byte[] bodyArray = Encoding.UTF8.GetBytes("Caught Exception: " + ex.Message);
+                                    using (MemoryStream stream = new MemoryStream(bodyArray))
+                                    {
+                                        string header = String.Format("HTTP/1.1 500 Server Error\r\n" +
+                                                                      "Content-Length: {0}\r\n" +
+                                                                      "Connection: close\r\n\r\n",
+                                            stream.Length);
+                                        byte[] headerArray = Encoding.UTF8.GetBytes(header);
+                                        resp.Write(headerArray, 0, headerArray.Length);
+                                        stream.CopyTo(resp);
+                                        await resp.FlushAsync();
+                                    }
+                                }
+                            }
+                        }
+                    }
                     else
-                        throw new InvalidDataException("HTTP method not supported: "
-                            + requestParts[0]); // TODO look into returning a 400-class error, instead of throwing an excption. 
+                    {
+                        using (var outputStream = socket.OutputStream)
+                        {
+                            using (Stream resp = outputStream.AsStreamForWrite())
+                            {
+                                byte[] bodyArray = Encoding.UTF8.GetBytes("Method Not Allowed: " + requestParts[0]);
+                                using (MemoryStream stream = new MemoryStream(bodyArray))
+                                {
+                                    string header = String.Format("HTTP/1.1 405 Method Not Allowed\r\n" +
+                                                                  "Content-Length: {0}\r\n" +
+                                                                  "Connection: close\r\n\r\n",
+                                        stream.Length);
+                                    byte[] headerArray = Encoding.UTF8.GetBytes(header);
+                                    resp.Write(headerArray, 0, headerArray.Length);
+                                    stream.CopyTo(resp);
+                                    await resp.FlushAsync();
+                                }
+                            }
+                        }
+                    }
                 }
             }
         }
 
-        private async void WriteResponse(string request, StreamSocket socket)
+        private void WriteResponse(string request, StreamSocket socket)
         {
-            // See if the request is for blinky.html, if yes get the new state
-            string state = "Unspecified";
-            string[] splitRequest = request.Split("?".ToCharArray(), 2);
-            string target = splitRequest[0];
-            if (target == "/fly" || target == "/fly/")
+            try
             {
-                if (splitRequest.Length > 1)
-                {
-                    string[] valueStr = splitRequest[1].Split(',');
-                    for (int key = 0; key < valueStr.Length; ++key)
-                    {
-                        int value = Int32.Parse(valueStr[key], System.Globalization.NumberStyles.HexNumber);
-                        _main.SetPWM(key, value);
-                    }
-                }
+                Debug.WriteLine("New Request: " + request);
 
-
-                // TODO replace output with something more useful for the task at hand. 
-                string html = state == "On" ? onHtmlString : offHtmlString;
-                byte[] bodyArray = Encoding.UTF8.GetBytes(html);
-                // Show the html 
-                using (var outputStream = socket.OutputStream)
+                string[] splitRequest = request.Split("?".ToCharArray(), 2);
+                string target = splitRequest[0];
+                if (target == "/fly" || target == "/fly/")
                 {
-                    using (Stream resp = outputStream.AsStreamForWrite())
+                    if (splitRequest.Length > 1)
                     {
-                        using (MemoryStream stream = new MemoryStream(bodyArray))
+                        string[] valueStr = splitRequest[1].Split(',');
+                        for (int key = 0; key < valueStr.Length; key++)
                         {
-                            string header = String.Format("HTTP/1.1 200 OK\r\n" +
-                                                "Content-Length: {0}\r\n" +
-                                                "Connection: close\r\n\r\n",
-                                                stream.Length);
-                            byte[] headerArray = Encoding.UTF8.GetBytes(header);
-                            resp.Write(headerArray, 0, headerArray.Length);
-                            stream.CopyTo(resp);
-                            resp.Flush();
+                            int value = Int32.Parse(valueStr[key], System.Globalization.NumberStyles.HexNumber);
+                            _main.SetPWM(key, value);
                         }
                     }
-                }
 
 
-
-            }
-            else if (target == "/image" || target == "/image")
-            {
-                if (splitRequest.Length > 1)
-                {
-                    if (Int32.Parse(splitRequest[1]) == 1)
-                    {
-                        //TODO rearrange. 
-                    }
-
-                    // Show the image 
+                    byte[] bodyArray = Encoding.UTF8.GetBytes(_main.getPwmString());
+                    // Show the html 
                     using (var outputStream = socket.OutputStream)
                     {
                         using (Stream resp = outputStream.AsStreamForWrite())
                         {
-
-                                Stream stream = await _main.CameraTake();
-
+                            using (MemoryStream stream = new MemoryStream(bodyArray))
+                            {
                                 string header = String.Format("HTTP/1.1 200 OK\r\n" +
                                                     "Content-Length: {0}\r\n" +
-                                                    "Content-Type: image/jpeg\r\n" +
                                                     "Connection: close\r\n\r\n",
                                                     stream.Length);
                                 byte[] headerArray = Encoding.UTF8.GetBytes(header);
                                 resp.Write(headerArray, 0, headerArray.Length);
                                 stream.CopyTo(resp);
                                 resp.Flush();
+                            }
                         }
                     }
 
 
+
+                }
+                else if (target == "/image" || target == "/image/")
+                {
+                    if (splitRequest.Length > 1)
+                    {
+                        if (int.Parse(splitRequest[1]) == 1)
+                        {
+                            // Show the image 
+                            using (var outputStream = socket.OutputStream)
+                            {
+
+                                _main.CameraTake();
+
+                                _main.CameraStream.Seek(0, SeekOrigin.Begin);
+
+
+                                using (Stream resp = outputStream.AsStreamForWrite())
+                                {
+
+    //                                var fileStream = File.Create("C:\\Path\\To\\File");
+    //                                myOtherObject.InputStream.Seek(0, SeekOrigin.Begin);
+    //                                myOtherObject.InputStream.CopyTo(fileStream);
+    //                                fileStream.Close();
+
+                                    string header = String.Format("HTTP/1.1 200 OK\r\n" +
+                                                        "Content-Length: {0}\r\n" +
+                                                        "Connection: Keep-Alive\r\n",
+                                                        "Content-Type: image/png\r\n\r\n",
+                                                        _main.CameraStream.Length);
+                                    byte[] headerArray = Encoding.UTF8.GetBytes(header);
+                                    resp.Write(headerArray, 0, headerArray.Length);
+                                    _main.CameraStream.CopyTo(resp);
+                                    resp.Flush();
+                                }
+                                ((Task)outputStream.FlushAsync()).Wait();
+                            }
+                        }
+                        else if (int.Parse(splitRequest[1]) == 2)
+                        {
+                        
+                        }
+                    }
+                }
+                else
+                {
+                    Debug.WriteLine(target);
+
+                    byte[] bodyArray = Encoding.UTF8.GetBytes("Not Found");
+                    using (var outputStream = socket.OutputStream)
+                    {
+                        using (Stream resp = outputStream.AsStreamForWrite())
+                        {
+                            using (MemoryStream stream = new MemoryStream(bodyArray))
+                            {
+                                string header = String.Format("HTTP/1.1 404 Not Found\r\n" +
+                                                    "Content-Length: {0}\r\n" +
+                                                    "Connection: close\r\n\r\n",
+                                                    stream.Length);
+                                byte[] headerArray = Encoding.UTF8.GetBytes(header);
+                                resp.Write(headerArray, 0, headerArray.Length);
+                                stream.CopyTo(resp);
+                                resp.Flush();
+                            }
+                        }
+                    }
                 }
             }
-            else
+            catch (Exception ex)
             {
-                string html = state == "On" ? onHtmlString : offHtmlString;
-                byte[] bodyArray = Encoding.UTF8.GetBytes(html);
-                // Show the html 
-                using (var outputStream = socket.OutputStream)
-                {
-                    using (Stream resp = outputStream.AsStreamForWrite())
-                    {
-                        using (MemoryStream stream = new MemoryStream(bodyArray))
-                        {
-                            string header = String.Format("HTTP/1.1 200 OK\r\n" +
-                                                "Content-Length: {0}\r\n" +
-                                                "Connection: close\r\n\r\n",
-                                                stream.Length);
-                            byte[] headerArray = Encoding.UTF8.GetBytes(header);
-                            resp.Write(headerArray, 0, headerArray.Length);
-                            stream.CopyTo(resp);
-                            resp.Flush();
-                        }
-                    }
-                }
+                Debug.WriteLine("Exception: " + ex.Message);
             }
         }
     }
