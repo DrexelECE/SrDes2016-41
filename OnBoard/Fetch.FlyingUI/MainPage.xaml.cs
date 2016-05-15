@@ -36,10 +36,10 @@ namespace Fetch.FlyingUI
 
         private MediaCapture _mediaCapture;
 
-        public Stream CameraStream;
+//        public Stream CameraStream;
 
         public StorageFile photoFile;
-        public readonly string PHOTO_FILE_NAME = "photo.jpg";
+        public readonly string PHOTO_FILE_NAME = "1.jpg";
 
 
         public void SpawnServer()
@@ -206,26 +206,7 @@ namespace Fetch.FlyingUI
         {
             await Dispatcher.RunAsync(Windows.UI.Core.CoreDispatcherPriority.Normal, () =>
             {
-                try
-                {
-                    Debug.WriteLine("MediaCaptureFailed: " + currentFailure.Message);
-
-//                    if (isRecording)
-//                    {
-//                        await mediaCapture.StopRecordAsync();
-//                        status.Text += "\n Recording Stopped";
-//                    }
-                }
-                catch (Exception)
-                {
-                }
-                finally
-                {
-//                    SetInitButtonVisibility(Action.DISABLE);
-//                    SetVideoButtonVisibility(Action.DISABLE);
-//                    SetAudioButtonVisibility(Action.DISABLE);
-//                    status.Text += "\nCheck if camera is diconnected. Try re-launching the app";
-                }
+                Debug.WriteLine("MediaCaptureFailed: " + currentFailure.Message);
             });
         }
 
@@ -240,12 +221,15 @@ namespace Fetch.FlyingUI
             }
         }
 
-        public async void CameraTake()
+        public void CameraTake()
         {
-            photoFile = await KnownFolders.PicturesLibrary.CreateFileAsync(
-                    PHOTO_FILE_NAME, CreationCollisionOption.GenerateUniqueName);
+
+            photoFile = KnownFolders.PicturesLibrary.CreateFileAsync(
+                    PHOTO_FILE_NAME, CreationCollisionOption.ReplaceExisting).GetAwaiter().GetResult();
+
             ImageEncodingProperties imageProperties = ImageEncodingProperties.CreateJpeg();
-            ((Task)_mediaCapture.CapturePhotoToStorageFileAsync(imageProperties, photoFile)).Wait();
+
+            _mediaCapture.CapturePhotoToStorageFileAsync(imageProperties, photoFile).GetAwaiter().GetResult();  // block until result is delivered. 
            
             Debug.WriteLine("Take Photo to file succeeded: " + photoFile.Path);
         }
@@ -294,11 +278,11 @@ namespace Fetch.FlyingUI
             _main = main;
 
             port = serverPort;
-            listener.ConnectionReceived += async (s, e) =>
+            listener.ConnectionReceived += (s, e) =>
             {
-                await ProcessRequestAsync(e.Socket);
                 try
                 {
+                    ProcessRequestAsync(e.Socket).GetAwaiter().GetResult();
                     e.Socket.Dispose();
                 }
                 catch (Exception ex)
@@ -402,7 +386,7 @@ namespace Fetch.FlyingUI
             }
         }
 
-        private void WriteResponse(string request, StreamSocket socket)
+        private async void WriteResponse(string request, StreamSocket socket)
         {
             try
             {
@@ -466,31 +450,23 @@ namespace Fetch.FlyingUI
 
                                 using (Stream resp = outputStream.AsStreamForWrite())
                                 {
-
-                                    //                                var fileStream = File.Create("C:\\Path\\To\\File");
-                                    //                                myOtherObject.InputStream.Seek(0, SeekOrigin.Begin);
-                                    //                                myOtherObject.InputStream.CopyTo(fileStream);
-                                    //                                fileStream.Close();
-
-                                    
-
-                                    string header = String.Format("HTTP/1.1 200 OK\r\n" +
-                                                    "Content-Length: {0}\r\n" +
-                                                    "Connection: Keep-Alive\r\n",
-                                                    "Content-Type: image/png\r\n\r\n",
-                                                    _main.CameraStream.Length);
-                                    byte[] headerArray = Encoding.UTF8.GetBytes(header);
-                                    resp.Write(headerArray, 0, headerArray.Length);
-                                    _main.CameraStream.CopyTo(resp);
-
-                                    using (
-                                        FileStream fsSource = new FileStream(_main.PHOTO_FILE_NAME, FileMode.Open,
-                                            FileAccess.Read))
+                                    using (var fsSource = KnownFolders.PicturesLibrary.OpenStreamForReadAsync(_main.PHOTO_FILE_NAME).GetAwaiter().GetResult())
                                     {
+                                        
+                                        string header = String.Format("HTTP/1.1 200 OK\r\n" +
+                                                                            "Content-Length: {0}\r\n" +
+                                                                            "Connection: Keep-Alive\r\n" +
+                                                                            "Content-Type: image/jpg\r\n\r\n",
+                                                                            fsSource.Length);
+                                        byte[] headerArray = Encoding.UTF8.GetBytes(header);
+                                        resp.Write(headerArray, 0, headerArray.Length);
+                                        //                                        _main.CameraStream.CopyTo(resp);
                                         fsSource.CopyTo(resp);
                                     }
+                                    await resp.FlushAsync();
                                 }
-                                ((Task)outputStream.FlushAsync()).Wait();
+//                                var fl = outputStream.FlushAsync();
+//                                fl.GetResults();
                             }
                         }
                         else if (int.Parse(splitRequest[1]) == 2)
