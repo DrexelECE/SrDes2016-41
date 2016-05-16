@@ -20,7 +20,7 @@
 
         <StackPanel Grid.Row="2" HorizontalAlignment="Center" VerticalAlignment="Center" Orientation="Horizontal" Margin="0,0,0,10">
             <Canvas Name="PreviewCanvas" Grid.Row="1" Grid.Column="0" Width="1280" Height="720" Background="Black"  Margin="0,0,0,0" Visibility="Visible">
-                <CaptureElement x:Name="PreviewElement" Width="1280" Height="720" HorizontalAlignment="Center" Visibility="Visible"/>
+                <CaptureElement x:Name="PreviewElement" Width="320" Height="240" HorizontalAlignment="Center" Visibility="Collapsed"/>
             </Canvas>
         </StackPanel>
     </Grid>

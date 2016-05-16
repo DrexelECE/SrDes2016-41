@@ -6,6 +6,7 @@ using System.Runtime.InteropServices.WindowsRuntime;
 using System.Text;
 using System.Threading.Tasks;
 using Windows.ApplicationModel;
+using Windows.Devices.Enumeration;
 using Windows.Graphics.Display;
 using Windows.Media.Capture;
 using Windows.Media.MediaProperties;
@@ -35,12 +36,7 @@ namespace Fetch.FlyingUI
         private HttpServer _httpServer;
 
         private MediaCapture _mediaCapture;
-
-//        public Stream CameraStream;
-
-        public StorageFile photoFile;
-        public readonly string PHOTO_FILE_NAME = "1.jpg";
-
+        private LowLagPhotoCapture _LLPC;
 
         public void SpawnServer()
         {
@@ -94,17 +90,17 @@ namespace Fetch.FlyingUI
         private UInt16[] _pwmValues = new UInt16[16];
 
 
-        public string getPwmString()
+        public string GetPwmString()
         {
             string res = "";
             for (int i = 0; i < _pwmValues.Length; i++)
             {
-                res += getPwmSingleString(i);
+                res += GetPwmSingleString(i);
             }
             return res;
         }
 
-        private string getPwmSingleString(int which)
+        private string GetPwmSingleString(int which)
         {
             return _pwmValues[which].ToString("X3")
                    + (which + 1 == _pwmValues.Length ? "" : ",");
@@ -143,8 +139,10 @@ namespace Fetch.FlyingUI
                 capInitSettings.StreamingCaptureMode = StreamingCaptureMode.Video;
                 _mediaCapture = new MediaCapture();
                 _mediaCapture.Failed += new MediaCaptureFailedEventHandler(CameraInit_Failed);
-                await _mediaCapture.InitializeAsync(capInitSettings);
 
+                var deviceList = DeviceInformation.FindAllAsync(DeviceClass.VideoCapture); // TODO HERE. 
+//                capInitSettings.VideoDeviceId = MediaCapture.
+                await _mediaCapture.InitializeAsync(capInitSettings);
 
                 IReadOnlyList<IMediaEncodingProperties> resolutions = _mediaCapture.VideoDeviceController.GetAvailableMediaStreamProperties(MediaStreamType.VideoPreview);
 
@@ -178,15 +176,19 @@ namespace Fetch.FlyingUI
                     }
 
                 }
-
                 await _mediaCapture.VideoDeviceController.SetMediaStreamPropertiesAsync(MediaStreamType.Photo, bestRes);
+                _mediaCapture.VideoDeviceController.Focus.TrySetAuto(true);
+
+                _LLPC = _mediaCapture.PrepareLowLagPhotoCaptureAsync(ImageEncodingProperties.CreateJpeg()).GetAwaiter().GetResult();
+
 
                 Debug.WriteLine("Using: " + bestRes.Width + "x" + bestRes.Height + " @ " + bestRes.FrameRate.Numerator + "/" + bestRes.FrameRate.Denominator + " fps");
 
 
                 PreviewElement.Source = _mediaCapture;
                 PreviewElement.Stretch = Stretch.None;
-                await _mediaCapture.StartPreviewAsync();
+                
+                _mediaCapture.StartPreviewAsync().GetAwaiter().GetResult();
 
                 Debug.WriteLine("done.");
             }
@@ -213,6 +215,11 @@ namespace Fetch.FlyingUI
 
         private void CameraCleanup()
         {
+            if (_LLPC != null)
+            {
+                _LLPC.FinishAsync().GetAwaiter().GetResult();
+                _LLPC = null;
+            }
             if (_mediaCapture != null)
             {
                 // Cleanup MediaCapture object
@@ -221,43 +228,14 @@ namespace Fetch.FlyingUI
             }
         }
 
-        public void CameraTake()
+        public Stream CameraTake()
         {
-
-            photoFile = KnownFolders.PicturesLibrary.CreateFileAsync(
-                    PHOTO_FILE_NAME, CreationCollisionOption.ReplaceExisting).GetAwaiter().GetResult();
-
-            ImageEncodingProperties imageProperties = ImageEncodingProperties.CreateJpeg();
-
-            _mediaCapture.CapturePhotoToStorageFileAsync(imageProperties, photoFile).GetAwaiter().GetResult();  // block until result is delivered. 
+            CapturedPhoto cp = _LLPC.CaptureAsync().GetAwaiter().GetResult();
            
-            Debug.WriteLine("Take Photo to file succeeded: " + photoFile.Path);
+            Debug.WriteLine("Returning stream...");
+
+            return cp.Frame.AsStreamForRead();
         }
-
-//        public  Stream CameraTake() {
-//            try
-//            {
-//                var imageProperties = ImageEncodingProperties.CreateJpeg();
-//                var stream = new InMemoryRandomAccessStream();
-//
-//                ((Task) _mediaCapture.CapturePhotoToStreamAsync(imageProperties, stream)).Wait();
-//
-//                Debug.WriteLine("Take Photo succeeded.");
-//
-//                CameraStream = stream.AsStreamForRead();
-//                return CameraStream;
-//
-//            }
-//            catch (Exception ex)
-//            {
-//                Debug.Write("Exception: " + ex.Message);
-//                CameraCleanup();
-//                return null;
-//            }
-//        }
-
-
-
     }
 
 
@@ -386,7 +364,7 @@ namespace Fetch.FlyingUI
             }
         }
 
-        private async void WriteResponse(string request, StreamSocket socket)
+        private void WriteResponse(string request, StreamSocket socket)
         {
             try
             {
@@ -407,7 +385,7 @@ namespace Fetch.FlyingUI
                     }
 
 
-                    byte[] bodyArray = Encoding.UTF8.GetBytes(_main.getPwmString());
+                    byte[] bodyArray = Encoding.UTF8.GetBytes(_main.GetPwmString());
                     // Show the html 
                     using (var outputStream = socket.OutputStream)
                     {
@@ -416,9 +394,9 @@ namespace Fetch.FlyingUI
                             using (MemoryStream stream = new MemoryStream(bodyArray))
                             {
                                 string header = String.Format("HTTP/1.1 200 OK\r\n" +
-                                                    "Content-Length: {0}\r\n" +
-                                                    "Connection: close\r\n\r\n",
-                                                    stream.Length);
+                                                              "Content-Length: {0}\r\n" +
+                                                              "Connection: close\r\n\r\n",
+                                    stream.Length);
                                 byte[] headerArray = Encoding.UTF8.GetBytes(header);
                                 resp.Write(headerArray, 0, headerArray.Length);
                                 stream.CopyTo(resp);
@@ -436,42 +414,37 @@ namespace Fetch.FlyingUI
                     {
                         if (int.Parse(splitRequest[1]) == 1)
                         {
-                            // Show the image 
                             using (var outputStream = socket.OutputStream)
                             {
-
-                                _main.CameraTake();
-
-//                                if (stream == null)
-//                                    throw new NullReferenceException("The stream with the image is null.");
-//
-//                                stream.Seek(0, SeekOrigin.Begin);
-
-
                                 using (Stream resp = outputStream.AsStreamForWrite())
                                 {
-                                    using (var fsSource = KnownFolders.PicturesLibrary.OpenStreamForReadAsync(_main.PHOTO_FILE_NAME).GetAwaiter().GetResult())
+                                    using (var stream = _main.CameraTake())
                                     {
-                                        
                                         string header = String.Format("HTTP/1.1 200 OK\r\n" +
-                                                                            "Content-Length: {0}\r\n" +
-                                                                            "Connection: Keep-Alive\r\n" +
-                                                                            "Content-Type: image/jpg\r\n\r\n",
-                                                                            fsSource.Length);
+                                                                      "Content-Length: {0}\r\n" +
+                                                                      "Connection: Keep-Alive\r\n" +
+                                                                      "Content-Type: image/jpg\r\n\r\n",
+                                            stream.Length);
                                         byte[] headerArray = Encoding.UTF8.GetBytes(header);
                                         resp.Write(headerArray, 0, headerArray.Length);
-                                        //                                        _main.CameraStream.CopyTo(resp);
-                                        fsSource.CopyTo(resp);
+                                        try
+                                        {
+                                            stream.CopyTo(resp);
+                                        }
+                                        catch (ArgumentException)
+                                        {
+                                        }
+                                        byte[] footerArray = Encoding.UTF8.GetBytes("\r\n");
+                                        resp.Write(footerArray, 0, footerArray.Length);
                                     }
-                                    await resp.FlushAsync();
+                                    resp.FlushAsync().GetAwaiter().GetResult();
+                                    Debug.WriteLine("... Image returned.");
                                 }
-//                                var fl = outputStream.FlushAsync();
-//                                fl.GetResults();
                             }
                         }
                         else if (int.Parse(splitRequest[1]) == 2)
                         {
-                        
+
                         }
                     }
                 }
@@ -487,9 +460,9 @@ namespace Fetch.FlyingUI
                             using (MemoryStream stream = new MemoryStream(bodyArray))
                             {
                                 string header = String.Format("HTTP/1.1 404 Not Found\r\n" +
-                                                    "Content-Length: {0}\r\n" +
-                                                    "Connection: close\r\n\r\n",
-                                                    stream.Length);
+                                                              "Content-Length: {0}\r\n" +
+                                                              "Connection: close\r\n\r\n",
+                                    stream.Length);
                                 byte[] headerArray = Encoding.UTF8.GetBytes(header);
                                 resp.Write(headerArray, 0, headerArray.Length);
                                 stream.CopyTo(resp);
@@ -498,6 +471,10 @@ namespace Fetch.FlyingUI
                         }
                     }
                 }
+            }
+            catch (IOException)
+            {
+                
             }
             catch (Exception ex)
             {
