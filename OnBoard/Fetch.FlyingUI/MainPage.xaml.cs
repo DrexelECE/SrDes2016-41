@@ -67,7 +67,7 @@ namespace Fetch.FlyingUI
                 // start the status beacon
                 int inc = 1;
                 int lev = 2048;
-                
+
                 while (true)
                 {
                     if (lev <= 1 || lev >= 4095)
@@ -77,14 +77,11 @@ namespace Fetch.FlyingUI
                         lev = lev << 1;
                     else
                         lev = lev >> 1;
-                
-                    SetPWM(15, 4096-lev);
+
+                    SetPWM(15, 4096 - lev);
                     Task.Delay(TimeSpan.FromMilliseconds(20)).Wait();
                 }
             });
-
-
-
         }
 
         private UInt16[] _pwmValues = new UInt16[16];
@@ -111,7 +108,7 @@ namespace Fetch.FlyingUI
             setTo = (setTo > 4094 ? 4094 : setTo);
             setTo = (setTo < 1 ? 1 : setTo);
 
-            _pwmValues[which] = (ushort)setTo;
+            _pwmValues[which] = (ushort) setTo;
 
             if (which > 15 || which < 0)
                 throw new ArgumentOutOfRangeException(nameof(which), "Must be 0-15, inclusive.");
@@ -144,7 +141,8 @@ namespace Fetch.FlyingUI
 //                capInitSettings.VideoDeviceId = MediaCapture.
                 await _mediaCapture.InitializeAsync(capInitSettings);
 
-                IReadOnlyList<IMediaEncodingProperties> resolutions = _mediaCapture.VideoDeviceController.GetAvailableMediaStreamProperties(MediaStreamType.VideoPreview);
+                IReadOnlyList<IMediaEncodingProperties> resolutions =
+                    _mediaCapture.VideoDeviceController.GetAvailableMediaStreamProperties(MediaStreamType.VideoPreview);
 
                 VideoEncodingProperties bestRes = null;
 
@@ -156,7 +154,8 @@ namespace Fetch.FlyingUI
                         continue;
                     var r = (VideoEncodingProperties) resolutions[i];
 
-                    Debug.WriteLine(i.ToString() + " res: " + r.Width + "x" + r.Height + " @ " + r.FrameRate.Numerator + "/" + r.FrameRate.Denominator + " fps (" + r.Type + ": " + r.Subtype + ")");
+                    Debug.WriteLine(i.ToString() + " res: " + r.Width + "x" + r.Height + " @ " + r.FrameRate.Numerator +
+                                    "/" + r.FrameRate.Denominator + " fps (" + r.Type + ": " + r.Subtype + ")");
 
                     if (r.FrameRate.Denominator != 1)
                         continue;
@@ -167,27 +166,30 @@ namespace Fetch.FlyingUI
                         continue;
                     }
 
-                    if (r.FrameRate.Numerator <= bestRes.FrameRate.Numerator && 
-                        r.Height * r.Width <= bestRes.Height * bestRes.Width &&
+                    if (r.FrameRate.Numerator <= bestRes.FrameRate.Numerator &&
+                        r.Height*r.Width <= bestRes.Height*bestRes.Width &&
                         r.Height >= 400 &&
                         r.Subtype == "YUY2")
                     {
                         bestRes = r;
                     }
-
                 }
                 await _mediaCapture.VideoDeviceController.SetMediaStreamPropertiesAsync(MediaStreamType.Photo, bestRes);
                 _mediaCapture.VideoDeviceController.Focus.TrySetAuto(true);
 
-                _LLPC = _mediaCapture.PrepareLowLagPhotoCaptureAsync(ImageEncodingProperties.CreateJpeg()).GetAwaiter().GetResult();
+                _LLPC =
+                    _mediaCapture.PrepareLowLagPhotoCaptureAsync(ImageEncodingProperties.CreateJpeg())
+                        .GetAwaiter()
+                        .GetResult();
 
 
-                Debug.WriteLine("Using: " + bestRes.Width + "x" + bestRes.Height + " @ " + bestRes.FrameRate.Numerator + "/" + bestRes.FrameRate.Denominator + " fps");
+                Debug.WriteLine("Using: " + bestRes.Width + "x" + bestRes.Height + " @ " + bestRes.FrameRate.Numerator +
+                                "/" + bestRes.FrameRate.Denominator + " fps");
 
 
                 PreviewElement.Source = _mediaCapture;
                 PreviewElement.Stretch = Stretch.None;
-                
+
                 _mediaCapture.StartPreviewAsync().GetAwaiter().GetResult();
 
                 Debug.WriteLine("done.");
@@ -204,12 +206,12 @@ namespace Fetch.FlyingUI
         /// </summary>
         /// <param name="currentCaptureObject"></param>
         /// <param name="currentFailure"></param>
-        private async void CameraInit_Failed(MediaCapture currentCaptureObject, MediaCaptureFailedEventArgs currentFailure)
+        private async void CameraInit_Failed(MediaCapture currentCaptureObject,
+            MediaCaptureFailedEventArgs currentFailure)
         {
-            await Dispatcher.RunAsync(Windows.UI.Core.CoreDispatcherPriority.Normal, () =>
-            {
-                Debug.WriteLine("MediaCaptureFailed: " + currentFailure.Message);
-            });
+            await
+                Dispatcher.RunAsync(Windows.UI.Core.CoreDispatcherPriority.Normal,
+                    () => { Debug.WriteLine("MediaCaptureFailed: " + currentFailure.Message); });
         }
 
 
@@ -231,7 +233,7 @@ namespace Fetch.FlyingUI
         public Stream CameraTake()
         {
             CapturedPhoto cp = _LLPC.CaptureAsync().GetAwaiter().GetResult();
-           
+
             Debug.WriteLine("Returning stream...");
 
             return cp.Frame.AsStreamForRead();
@@ -272,10 +274,7 @@ namespace Fetch.FlyingUI
 
         public void StartServer()
         {
-            Task.Run(async () =>
-            {
-                await listener.BindServiceNameAsync(port.ToString());
-            });
+            Task.Run(async () => { await listener.BindServiceNameAsync(port.ToString()); });
         }
 
 
@@ -317,8 +316,6 @@ namespace Fetch.FlyingUI
                         }
                         catch (Exception ex)
                         {
-
-
                             using (var outputStream = socket.OutputStream)
                             {
                                 using (Stream resp = outputStream.AsStreamForWrite())
@@ -404,9 +401,6 @@ namespace Fetch.FlyingUI
                             }
                         }
                     }
-
-
-
                 }
                 else if (target == "/image" || target == "/image/")
                 {
@@ -444,7 +438,6 @@ namespace Fetch.FlyingUI
                         }
                         else if (int.Parse(splitRequest[1]) == 2)
                         {
-
                         }
                     }
                 }
@@ -474,7 +467,6 @@ namespace Fetch.FlyingUI
             }
             catch (IOException)
             {
-                
             }
             catch (Exception ex)
             {
