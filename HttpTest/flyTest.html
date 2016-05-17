@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Flight Test</title>
+
+    <script>
+        /*waits 'delay' time after the last event to fire */
+        _debounce = function(fn, delay) {
+            var timer = null;
+            return function() {
+                var context = this,
+                        args = arguments;
+                clearTimeout(timer);
+                timer = setTimeout(function() {
+                    fn.apply(context, args);
+                }, delay);
+            };
+        };
+
+        var img, img2, thr, ail, ele, rud, aux, clw;
+
+        process = function() {
+            img = document.getElementById('img');
+            img2 = document.getElementById('img2');
+            thr = parseInt(document.getElementById('thr').value).toString(16);
+            ail = parseInt(document.getElementById('ail').value).toString(16);
+            ele = parseInt(document.getElementById('ele').value).toString(16);
+            rud = parseInt(document.getElementById('rud').value).toString(16);
+            aux = parseInt(document.getElementById('aux').value).toString(16);
+            clw = (document.getElementById('clw').checked ? "7b0" : "375");
+
+            img.src="http://10.0.0.140:8000/fly?" + thr + "," + ail + "," + ele + "," + rud + "," + aux + "," + clw;
+
+            img2.src = "http://10.0.0.140:8000/image?1";
+        };
+
+        window.addEventListener("load", function load(event){
+            window.removeEventListener("load", load, false); //remove listener, no longer needed
+            process();
+        },false);
+    </script>
+</head>
+<body>
+<table>
+    <tr>
+        <td><label for="thr">Thr</label></td>
+        <td><input id="thr" type="range" min="1116" max="3349" value="1116" onchange="process()" /></td>
+    </tr>
+    <tr>
+        <td><label for="ail">Ail</label></td>
+        <td><input id="ail" type="range" min="1116" max="3062" value="2048" onchange="process()" /></td>
+    </tr>
+    <tr>
+        <td><label for="ele">Ele</label></td>
+        <td><input id="ele" type="range" min="1114" max="3060" value="2048" onchange="process()" /></td>
+    </tr>
+    <tr>
+        <td><label for="rud">Rud</label></td>
+        <td><input id="rud" type="range" min="1120" max="3064" value="2048" onchange="process()" /></td>
+    </tr>
+    <tr>
+        <td><label for="aux">Aux</label></td>
+        <td><input id="aux" type="range" min="1114" max="3066" value="2800" onchange="process()" /></td>
+    </tr>
+    <tr>
+        <td><label for="clw">Claw</label></td>
+        <td><input id="clw" type="checkbox" value="1" onchange="process()" onclick="process()" /></td>
+    </tr>
+</table>
+<img src="" id="img2" />
+<img src="" id="img" />
+
+</body>
+</html>
