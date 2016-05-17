@@ -137,7 +137,12 @@ namespace Fetch.FlyingUI
                 _mediaCapture = new MediaCapture();
                 _mediaCapture.Failed += new MediaCaptureFailedEventHandler(CameraInit_Failed);
 
-                var deviceList = DeviceInformation.FindAllAsync(DeviceClass.VideoCapture); // TODO HERE. 
+                var deviceList = await DeviceInformation.FindAllAsync(DeviceClass.VideoCapture);
+
+                foreach (DeviceInformation di in deviceList)
+                {
+                    Debug.WriteLine("-> " + di.Id + " -> " + di.Name);
+                }
 //                capInitSettings.VideoDeviceId = MediaCapture.
                 await _mediaCapture.InitializeAsync(capInitSettings);
 
