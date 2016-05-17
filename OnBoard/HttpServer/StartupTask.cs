@@ -6,7 +6,7 @@ using System.Diagnostics;
 using System.Text;
 using Windows.Foundation.Collections;
 using Windows.ApplicationModel.Background;
-using Windows.ApplicationModel.AppService;
+//using Windows.ApplicationModel.AppService;
 using Windows.Networking.Sockets;
 using System.IO;
 using Windows.Storage.Streams;
@@ -40,7 +40,7 @@ namespace HttpServer
         private const uint BufferSize = 8192;
         private int port = 8000;
         private StreamSocketListener listener;
-        private AppServiceConnection appServiceConnection;
+//        private AppServiceConnection appServiceConnection;
 
         public HttpServer(int serverPort)
         {
@@ -58,17 +58,17 @@ namespace HttpServer
             {
                 await listener.BindServiceNameAsync(port.ToString());
 
-                // Initialize the AppServiceConnection
-                appServiceConnection = new AppServiceConnection();
-                appServiceConnection.PackageFamilyName = "fetchDrone_yzekw4x8qxe1g";
-                appServiceConnection.AppServiceName = "FetchComm";
-
-                // Send a initialize request 
-                var res = await appServiceConnection.OpenAsync();
-                if (res != AppServiceConnectionStatus.Success)
-                {
-                    throw new Exception("Failed to connect to the AppService");
-                }
+//                // Initialize the AppServiceConnection
+//                appServiceConnection = new AppServiceConnection();
+//                appServiceConnection.PackageFamilyName = "fetchDrone_yzekw4x8qxe1g";
+//                appServiceConnection.AppServiceName = "FetchComm";
+//
+//                // Send a initialize request 
+//                var res = await appServiceConnection.OpenAsync();
+//                if (res != AppServiceConnectionStatus.Success)
+//                {
+//                    throw new Exception("Failed to connect to the AppService");
+//                }
             });
         }
 
@@ -135,7 +135,7 @@ namespace HttpServer
 
                 Debug.WriteLine(updateMessage.Values.ToString());
 #pragma warning disable CS4014
-                appServiceConnection.SendMessageAsync(updateMessage);
+//                appServiceConnection.SendMessageAsync(updateMessage);
 #pragma warning restore CS4014
             }
 
