@@ -11,3 +11,5 @@ foreach($q as $k => $v) {
 header('Content-Type: application/json');
 
 echo json_encode($set);
+
+echo "\r\n";
