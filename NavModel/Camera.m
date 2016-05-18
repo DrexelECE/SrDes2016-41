@@ -89,7 +89,11 @@ classdef Camera
             if (nargin > 2 && ~isempty(fig))
                 figure(fig);
                 clf;
-                plot(dX, dY, '*r');
+                if (dX == -1)
+                    text(this.hResolution/2, this.vResolution/2, '(Out of View)', 'HorizontalAlignment', 'center');
+                else
+                    plot(dX, dY, '*r');
+                end
                 axis image;
                 axis([0 this.hResolution 0 this.vResolution]);
                 grid on;
