@@ -25,10 +25,10 @@ Camera.targetPosition([10, 60, -30]);
 %% position 1
 dronePosition = [0 0 0];
 
-[x0, y0] = camera0.getDotLocation(dronePosition, 1);
-[x1, y1] = camera1.getDotLocation(dronePosition, 2);
+[x0, y0] = camera0.getDotLocation(dronePosition, 2);
+[x1, y1] = camera1.getDotLocation(dronePosition, 3);
 
-Camera.plotSpatial(dronePosition, 3, [camera0 camera1]);
+Camera.plotSpatial(dronePosition, 1, [camera0 camera1]);
 
 keyboard;
 
@@ -36,18 +36,18 @@ keyboard;
 %% position 2
 dronePosition = [6 15 -10];
 
-[x0, y0] = camera0.getDotLocation(dronePosition, 1);
-[x1, y1] = camera1.getDotLocation(dronePosition, 2);
+[x0, y0] = camera0.getDotLocation(dronePosition, 2);
+[x1, y1] = camera1.getDotLocation(dronePosition, 3);
 
-Camera.plotSpatial(dronePosition, 3, [camera0 camera1]);
+Camera.plotSpatial(dronePosition, 1, [camera0 camera1]);
 
 keyboard;
 
 %% position 3
 dronePosition = [9 55 -10];
 
-[x0, y0] = camera0.getDotLocation(dronePosition, 1);
-[x1, y1] = camera1.getDotLocation(dronePosition, 2);
+[x0, y0] = camera0.getDotLocation(dronePosition, 2);
+[x1, y1] = camera1.getDotLocation(dronePosition, 3);
 
-Camera.plotSpatial(dronePosition, 3, [camera0 camera1]);
+Camera.plotSpatial(dronePosition, 1, [camera0 camera1]);
 
